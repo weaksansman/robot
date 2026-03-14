@@ -25,33 +25,29 @@ from std_msgs.msg import Int8
 #    /dev/ttyACM0   ← ESP32-S3 native USB, or Arduino-style boards
 #
 # ═══════════════════════════════════════════════════════════════
-ESP32_PORT  = "/dev/ttyACM0"   # ← ESP32  (micro-ROS agent connects here)
-MEGA_PORT   = "/dev/ttyUSB0"   # ← Arduino Mega 2560  (servo JSON forwarded here)
-BAUD_RATE   = 115200           # Do not change — must match both boards
+MEGA_PORT  = "/dev/ttyUSB0"   # ← Arduino Mega 2560  (servo JSON forwarded here)
+BAUD_RATE  = 115200           # Do not change — must match both boards
 
 # ── micro-ROS agent ───────────────────────────────────────────
-# DO not change
-LAUNCH_MICROROS_AGENT = True   # Always true
+LAUNCH_MICROROS_AGENT = True
 
 # ── UDP ───────────────────────────────────────────────────────
-LISTEN_IP   = "0.0.0.0"   # listen on all network interfaces
-LISTEN_PORT = 3390         # must match PI_PORT in robot_control.py
+LISTEN_IP   = "0.0.0.0"
+LISTEN_PORT = 3390
 
 # ── ROS2 topics ───────────────────────────────────────────────
 CMD_VEL_TOPIC = "cmd_vel"
 LOCK_TOPIC    = "/lock"
 
 # ── Packet constants ──────────────────────────────────────────
-MOTION_PACKET_SIZE = 8      # struct.pack('ff', linear, angular)
-LOCK_PACKET_SIZE   = 2      # struct.pack('Bb', 0xFF, state)
+MOTION_PACKET_SIZE = 8
+LOCK_PACKET_SIZE   = 2
 LOCK_MARKER        = 0xFF
-SERVO_MARKER       = 0xAA   # first byte → servo/motor/posture JSON for Mega
+SERVO_MARKER       = 0xAA
 
 
 # ═══════════════════════════════════════════════════════════════
 #  Arduino Mega serial connection
-#  Opens on startup. If Mega is not connected, servo packets are
-#  logged as warnings and dropped — everything else still works.
 # ═══════════════════════════════════════════════════════════════
 class MegaSerial:
     def __init__(self):
@@ -62,17 +58,15 @@ class MegaSerial:
     def _connect(self):
         if not os.path.exists(MEGA_PORT):
             print(f"[MEGA]  WARN: {MEGA_PORT} not found — servo packets will be dropped")
-            print(f"[MEGA]  Run with --list to see available ports")
             return
         try:
             self._ser = serial.Serial(MEGA_PORT, BAUD_RATE, timeout=1)
-            time.sleep(1.5)   # wait for Mega to reset after DTR pulse
+            time.sleep(1.5)
             print(f"[MEGA]  OK: Arduino Mega connected on {MEGA_PORT} @ {BAUD_RATE}")
         except serial.SerialException as e:
             print(f"[MEGA]  ERROR: {e}")
 
     def send(self, json_bytes: bytes):
-        """Forward raw JSON bytes + newline to Mega via serial."""
         with self._lock:
             if self._ser is None:
                 print("[MEGA]  WARN: not connected — servo packet dropped")
@@ -81,7 +75,7 @@ class MegaSerial:
                 self._ser.write(json_bytes + b'\n')
             except serial.SerialException as e:
                 print(f"[MEGA]  ERROR write: {e}")
-                self._ser = None   # mark as disconnected
+                self._ser = None
 
     def close(self):
         with self._lock:
@@ -90,7 +84,7 @@ class MegaSerial:
 
 
 # ═══════════════════════════════════════════════════════════════
-#  --list helper: show all serial ports with USB descriptions
+#  --list helper
 # ═══════════════════════════════════════════════════════════════
 def _get_port_description(port):
     try:
@@ -114,8 +108,8 @@ def _get_port_description(port):
     dev_name = port.split('/')[-1]
     try:
         base = f'/sys/class/tty/{dev_name}/device/..'
-        vid = open(f'{base}/idVendor').read().strip()
-        pid = open(f'{base}/idProduct').read().strip()
+        vid  = open(f'{base}/idVendor').read().strip()
+        pid  = open(f'{base}/idProduct').read().strip()
         return f"VID:0x{vid}  PID:0x{pid}"
     except Exception:
         pass
@@ -132,9 +126,7 @@ def list_serial_ports():
     else:
         for port in ports:
             desc = _get_port_description(port)
-            tag  = ""
-            if port == ESP32_PORT:  tag = "  ← ESP32_PORT  (micro-ROS)"
-            if port == MEGA_PORT:   tag = "  ← MEGA_PORT   (servo/arm)"
+            tag  = "  ← MEGA_PORT (servo/arm)" if port == MEGA_PORT else ""
             print(f"  {port:<20}  {desc}{tag}")
     print("─" * 62)
     print()
@@ -144,19 +136,21 @@ def list_serial_ports():
     print("  ESP32-S3 native  →  usually /dev/ttyACM*")
     print("  Arduino Mega     →  usually /dev/ttyUSB* or /dev/ttyACM*")
     print()
-    print("Set ESP32_PORT and MEGA_PORT at the top of this file.")
+    print("Set MEGA_PORT at the top of this file.")
     print()
 
 
 # ═══════════════════════════════════════════════════════════════
-#  micro-ROS agent process manager  (unchanged)
+#  micro-ROS agent — now uses ACM0 hardcoded since that's ESP32
 # ═══════════════════════════════════════════════════════════════
 class MicroROSAgent:
+    AGENT_PORT = "/dev/ttyACM0"
+
     def __init__(self):
         self._proc = None
 
     def start(self):
-        cmd = f"micro-ros-agent serial --dev {ESP32_PORT} -b {BAUD_RATE}"
+        cmd = f"micro-ros-agent serial --dev {self.AGENT_PORT} -b {BAUD_RATE}"
         print(f"[AGENT] Starting: {cmd}")
         try:
             self._proc = subprocess.Popen(
@@ -172,7 +166,6 @@ class MicroROSAgent:
             print("[AGENT] ERROR: 'micro-ros-agent' command not found.")
             print("        Install:  sudo snap install micro-ros-agent")
             print("        Or set LAUNCH_MICROROS_AGENT = False and run agent manually.")
-            print()
 
     def _log_output(self):
         for line in self._proc.stdout:
@@ -192,9 +185,6 @@ class MicroROSAgent:
 
 # ═══════════════════════════════════════════════════════════════
 #  ROS2 UDP bridge node
-#  Unchanged from original EXCEPT:
-#    • Accepts MegaSerial as a dependency
-#    • _recv_loop now routes 0xAA packets to Mega instead of warning
 # ═══════════════════════════════════════════════════════════════
 class UDPBridgeNode(Node):
     def __init__(self, mega: MegaSerial):
@@ -210,33 +200,30 @@ class UDPBridgeNode(Node):
         self.sock.bind((LISTEN_IP, LISTEN_PORT))
         self.sock.settimeout(1.0)
 
-        self.get_logger().info(f"ESP32 port    : {ESP32_PORT} @ {BAUD_RATE} baud")
-        self.get_logger().info(f"Mega port     : {MEGA_PORT}  @ {BAUD_RATE} baud")
-        self.get_logger().info(f"UDP listening : {LISTEN_IP}:{LISTEN_PORT}")
-        self.get_logger().info(f"Publishing    : '{CMD_VEL_TOPIC}'  |  '{LOCK_TOPIC}'")
+        self.get_logger().info(f"ESP32 (micro-ROS) : /dev/ttyACM0 @ {BAUD_RATE} baud")
+        self.get_logger().info(f"Mega port         : {MEGA_PORT}  @ {BAUD_RATE} baud")
+        self.get_logger().info(f"UDP listening     : {LISTEN_IP}:{LISTEN_PORT}")
+        self.get_logger().info(f"Publishing        : '{CMD_VEL_TOPIC}'  |  '{LOCK_TOPIC}'")
 
         self._last_recv = self.get_clock().now()
         self._is_locked = False
 
-        # Watchdog: send stop if laptop goes silent (but not while locked)
         self.create_timer(0.1, self._watchdog_cb)
 
         self._running = True
         threading.Thread(target=self._recv_loop, daemon=True).start()
 
-    # ── Watchdog ──────────────────────────────────────────────
     def _watchdog_cb(self):
         if self._is_locked:
             return
         elapsed = (self.get_clock().now() - self._last_recv).nanoseconds / 1e9
         if elapsed > 0.5:
-            self.cmd_pub.publish(Twist())   # all-zero = full stop
+            self.cmd_pub.publish(Twist())
 
-    # ── UDP receive loop ───────────────────────────────────────
     def _recv_loop(self):
         while self._running:
             try:
-                data, addr = self.sock.recvfrom(512)   # larger buffer for JSON
+                data, addr = self.sock.recvfrom(512)
             except socket.timeout:
                 continue
             except Exception as e:
@@ -246,20 +233,14 @@ class UDPBridgeNode(Node):
             self._last_recv = self.get_clock().now()
             first = data[0] if data else None
 
-            # ── Servo / motor / posture packet ────────────────
-            # Format: [0xAA] [JSON bytes...]
-            # Strip marker byte, forward raw JSON to Arduino Mega via serial.
-            # No ROS2 involved — Mega handles it directly.
             if first == SERVO_MARKER and len(data) > 1:
-                json_bytes = data[1:]   # strip 0xAA
+                json_bytes = data[1:]
                 self._mega.send(json_bytes)
                 self.get_logger().debug(f"[SERVO] → Mega: {json_bytes.decode(errors='replace')}")
 
-            # ── Lock / brake packet ───────────────────────────
             elif len(data) == LOCK_PACKET_SIZE and first == LOCK_MARKER:
                 self._handle_lock(data)
 
-            # ── Motion packet (two floats) ────────────────────
             elif len(data) == MOTION_PACKET_SIZE:
                 self._handle_motion(data)
 
@@ -269,7 +250,6 @@ class UDPBridgeNode(Node):
                     f"first=0x{first:02X}  from {addr[0]}:{addr[1]}"
                 )
 
-    # ── Handlers (unchanged) ───────────────────────────────────
     def _handle_motion(self, data):
         linear, angular = struct.unpack('ff', data)
         msg = Twist()
@@ -287,7 +267,7 @@ class UDPBridgeNode(Node):
         msg.data = int(state)
         self.lock_pub.publish(msg)
         self.get_logger().info(
-            f"/lock published → {'1  (ENGAGED)' if state else '0  (RELEASED)'}"
+            f"/lock → {'1  (ENGAGED)' if state else '0  (RELEASED)'}"
         )
 
     def destroy_node(self):
@@ -298,28 +278,20 @@ class UDPBridgeNode(Node):
 
 # ═══════════════════════════════════════════════════════════════
 def main():
-
-    # ── --list mode ───────────────────────────────────────────
     if '--list' in sys.argv:
         list_serial_ports()
         return
 
-    # ── Validate ESP32 port ───────────────────────────────────
-    if not os.path.exists(ESP32_PORT):
-        print(f"\nERROR: ESP32 port '{ESP32_PORT}' does not exist.")
-        print("Run with --list to see what's available:\n")
-        list_serial_ports()
-        sys.exit(1)
+    if not os.path.exists(MEGA_PORT):
+        print(f"\nWARN: Mega port '{MEGA_PORT}' not found — servo packets will be dropped.")
+        print("Run with --list to see what's available.\n")
 
-    # ── Connect to Arduino Mega (non-fatal if missing) ────────
-    mega = MegaSerial()
-
-    # ── micro-ROS agent for ESP32 ─────────────────────────────
+    mega  = MegaSerial()
     agent = MicroROSAgent()
+
     if LAUNCH_MICROROS_AGENT:
         agent.start()
 
-    # ── ROS2 bridge ───────────────────────────────────────────
     rclpy.init()
     node = UDPBridgeNode(mega)
     try:
