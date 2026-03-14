@@ -10,7 +10,7 @@ install micro-ROS agent from
 
 after you have all requirement do these step
 Clone the repo
-```git clone https://github.com/weaksansman/robot.git```
+`git clone https://github.com/weaksansman/robot.git`
 Set up your ROS 2 workspace
 mkdir -p ~/ros2_ws/src          #create folder ~/ros2_wssrc (if already have don't worry it doesn't make another folder ros2_ws and src
 cp -r robot ~/ros2_ws/src/      #move repo to ~/ros2_ws/src
