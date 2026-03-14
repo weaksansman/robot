@@ -1,21 +1,29 @@
 # robot
-code for rescue (i don't have qrcam code bruh)
+code for rescue robot (i don't have qrcam code bruh)
 purpose for this is just ehhh you know just git clone and make program can be use easily and i don't want other people to acces this other than for people who i know
-and install ros2 humble from https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html
-and install micro-ROS agent from https://www.hackster.io/514301/micro-ros-on-esp32-using-arduino-ide-1360ca
-first
-also make sure to colcon build in folder that have src
-Like example
-ros2_ws --> have src
-colcon build
+#Require
+install ros2 humble from
+```https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html```
 
-then it should be no problem
+install micro-ROS agent from 
+```https://www.hackster.io/514301/micro-ros-on-esp32-using-arduino-ide-1360ca```
 
-all node
-UDP
-UDPS
+after you have all requirement do these step
+Clone the repo
+```git clone https://github.com/weaksansman/robot.git```
+Set up your ROS 2 workspace
+mkdir -p ~/ros2_ws/src          #create folder ~/ros2_wssrc (if already have don't worry it doesn't make another folder ros2_ws and src
+cp -r robot ~/ros2_ws/src/      #move repo to ~/ros2_ws/src
+cd ~/ros2_ws                    #go into ~/ros2_ws
+colcon build                    
 
-Full version
 
-ros2 run robot UDP #for esp32 (run micro_ros_agent before this btw i recommend)
-ros2 run robot UDPS #for mega
+Source the workspace
+```source install/setup.bash```
+
+you can now safely run node
+```ros2 run robot UDP #for esp32```
+For ESP32 (start micro-ROS agent first, then):
+
+```ros2 run robot UDPS #for mega```
+
