@@ -26,7 +26,7 @@ setup(
         'console_scripts': [
 		'UDP = robot.ESP32:main',
 		'UDPS = robot.Mega:main',
-		'qrcam = robot.qrcam:main'
+		'hazmat = robot.yolo_hazmat4:main'
         ],
     },
 )
