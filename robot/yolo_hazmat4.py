@@ -18,9 +18,9 @@ class YOLOHazmatDetector(Node):
             return
 
         # กำหนด Path ของไฟล์
-        cfg_path = '/home/pi/datahazmat/net/yolo.cfg'
-        weights_path = '/home/pi/datahazmat/net/yolo.weights'
-        names_path = '/home/pi/datahazmat/net/labels.names'
+        cfg_path = '~/ros2_ws/src/robot/datahazmat/netyolo.cfg'
+        weights_path = '~/ros2_ws/src/robot/datahazmat/net/yolo.weights'
+        names_path = '~/ros2_ws/src/robot/datahazmat/net/labels.names'
 
         # ตรวจสอบไฟล์โมเดล
         if not os.path.exists(cfg_path) or not os.path.exists(weights_path) or not os.path.exists(names_path):
